@@ -1,0 +1,9 @@
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\bin\Debug\TaskRecorderParser.exe.config
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\bin\Debug\TaskRecorderParser.exe
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\bin\Debug\TaskRecorderParser.pdb
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.csprojResolveAssemblyReference.cache
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.Form1.resources
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.Properties.Resources.resources
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.csproj.GenerateResource.Cache
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.exe
+c:\users\meyer\documents\visual studio 2015\Projects\TaskRecorderParser\TaskRecorderParser\obj\Debug\TaskRecorderParser.pdb
