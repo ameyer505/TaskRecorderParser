@@ -1,10 +1,13 @@
-﻿using System;
+﻿using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
+
 
 namespace TaskRecorderParser
 {
@@ -107,8 +110,8 @@ namespace TaskRecorderParser
                 return menuItemList.OrderBy(x => x.Name).ToList();
             else if (rb_label.Checked)
                 return menuItemList.OrderBy(x => x.Label).ToList();
-            else if (rb_type.Checked)
-                return menuItemList.OrderBy(x => x.Type).ToList();
+            else if (rb_form.Checked)
+                return menuItemList.OrderBy(x => x.FormName).ToList();
             return menuItemList;
         }
 
@@ -146,6 +149,8 @@ namespace TaskRecorderParser
                 menuItemList = new List<Models.MenuItem>();
                 menuItemList = ParseInputFile(path);
                 UpdateListView(GetSorting(menuItemList));
+                btn_exportCSV.Enabled = true;
+                btn_exportXLSX.Enabled = true;
             }
             else
             {
@@ -163,11 +168,67 @@ namespace TaskRecorderParser
             UpdateListView(GetSorting(menuItemList));
         }
 
-        private void rbType_CheckedChanged(object sender, EventArgs e)
+        private void rbForm_CheckedChanged(object sender, EventArgs e)
         {
             UpdateListView(GetSorting(menuItemList));
         }
 
+        private void btnExportXLSX_Click(object sender, EventArgs e)
+        {
+            List<Models.MenuItem> menuItemList = new List<Models.MenuItem>();
+            menuItemList = GetSorting(ParseInputFile(tb_input.Text));
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Excel File|.xlsx",
+                Title = "Save As Excel File",
+                CheckPathExists = true,
+                RestoreDirectory = true,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                FileInfo fi = new FileInfo(saveFileDialog.FileName);
+                using (ExcelPackage ep = new ExcelPackage(fi))
+                {
+                    ExcelWorksheet ws = ep.Workbook.Worksheets.Add("Menu Items");
+                    ws.Cells[1, 1].Value = "Menu Item Label";
+                    ws.Cells[1, 2].Value = "Menu Item Name";
+                    ws.Cells[1, 3].Value = "Menu Item Type";
+                    ws.Cells[1, 4].Value = "Form Name";
+                    ws.Cells[2, 1].LoadFromCollection(menuItemList);
+                    ep.Save();
+                }
+                MessageBox.Show("File Exported Successfully!", "File Exported", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+               
+        }
+
+        private void btnExportCSV_Click(object sender, EventArgs e)
+        {
+            List<Models.MenuItem> menuItemList = new List<Models.MenuItem>();
+            menuItemList = GetSorting(ParseInputFile(tb_input.Text));
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "CSV File|.csv",
+                Title = "Save As CSV File",
+                CheckPathExists = true,
+                RestoreDirectory = true,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            };
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                StringBuilder csv = new StringBuilder();
+                string header = string.Format("{0},{1},{2},{3}", "Menu Item Label", "Menu Item Name", "Menu Item Type", "Form Name");
+                csv.AppendLine(header);
+                foreach (var menuItem in menuItemList)
+                {
+                    string line = string.Format("{0},{1},{2},{3}", menuItem.Label, menuItem.Name, menuItem.Type, menuItem.FormName);
+                    csv.AppendLine(line);
+                }
+                File.WriteAllText(saveFileDialog.FileName, csv.ToString());
+                MessageBox.Show("File Exported Successfully!", "File Exported", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
         #endregion
     }
 }
