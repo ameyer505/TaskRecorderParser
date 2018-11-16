@@ -18,8 +18,7 @@ namespace TaskRecorderParser
             ResizeListViewColumns();
         }
 
-        #region HelperMethods
-
+        #region ParseMethods
         private List<Models.MenuItem> ParseInputFile(string path)
         {
             XmlDocument xDoc = new XmlDocument();
@@ -43,9 +42,9 @@ namespace TaskRecorderParser
             try
             {
                 string ns = "http://schemas.microsoft.com/2003/10/Serialization/Arrays";
-                XmlDocument xDoc = new XmlDocument();
-                xDoc.Load(path);
-                XmlNodeList values = xDoc.GetElementsByTagName("Value", ns);
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.Load(path);
+                XmlNodeList values = xmlDoc.GetElementsByTagName("Value", ns);
                 foreach (XmlNode value in values)
                 {
                     Models.MenuItem menuItem = new Models.MenuItem();
@@ -60,6 +59,28 @@ namespace TaskRecorderParser
                         menuItemList.Add(menuItem);
                     }
                 }
+
+                XNamespace xmlSchemaNs = "http://www.w3.org/2001/XMLSchema-instance";
+                XNamespace msftTRns = "http://schemas.datacontract.org/2004/07/Microsoft.Dynamics.Client.ServerForm.TaskRecording";
+                XDocument xDoc = XDocument.Load(path);
+                var menuItemUserActions = xDoc.Descendants(msftTRns + "Node").Where(n => n.Attribute(xmlSchemaNs + "type").Value == "MenuItemUserAction");
+                foreach (XElement menuItemUserAction in menuItemUserActions)
+                {
+                    string menuItemName = menuItemUserAction.Element(msftTRns + "MenuItemName").Value;
+                    string menuItemType = menuItemUserAction.Element(msftTRns + "MenuItemType").Value;
+
+                    var menuItem = menuItemList.FirstOrDefault(mi => mi.Name.ToUpper() == menuItemName.ToUpper() && mi.Type == menuItemType);
+                    if (menuItem == null)
+                    {
+                        Models.MenuItem mi = new Models.MenuItem();
+                        mi.Label = "";
+                        mi.Name = menuItemName;
+                        mi.Type = menuItemType;
+                        mi.FormName = "";
+                        menuItemList.Add(mi);
+                    }
+                }
+
             }
             catch (Exception ex)
             {
@@ -75,7 +96,7 @@ namespace TaskRecorderParser
             {
                 XDocument xDoc = XDocument.Load(path);
                 var formActivateEvents = xDoc.Descendants("event").Where(n => n.Attribute("name").Value == "FormActivate");
-                foreach(var formActivateEvent in formActivateEvents)
+                foreach (var formActivateEvent in formActivateEvents)
                 {
                     Models.MenuItem mi = new Models.MenuItem();
                     mi.Label = formActivateEvent.Attribute("formcaption").Value;
@@ -92,6 +113,9 @@ namespace TaskRecorderParser
             }
             return menuItemList.GroupBy(mi => new { mi.Name, mi.Label, mi.Type, mi.FormName }).Select(x => x.First()).ToList();
         }
+        #endregion
+
+        #region HelperMethods
 
         private void ResizeListViewColumns()
         {
