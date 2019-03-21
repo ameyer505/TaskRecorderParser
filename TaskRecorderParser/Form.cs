@@ -2,12 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
-
+using TaskRecorderParser.Models;
 
 namespace TaskRecorderParser
 {
@@ -24,29 +25,77 @@ namespace TaskRecorderParser
         #region ParseMethods
         private List<Models.MenuItem> ParseInputFile(string path)
         {
+            string extension = Path.GetExtension(path);
+            if(extension == ".xml")
+            {
+                using (StreamReader streamReader = new StreamReader(path))
+                {
+                    TaskRecordingType type = DetermineTaskRecordingType(streamReader.BaseStream);
+                    streamReader.BaseStream.Position = 0;
+                    tb_taskRecordingType.Text = type.ToString();
+                    switch (type)
+                    {
+                        case TaskRecordingType.D365FO:
+                            return ParseD365FOTaskRecording(streamReader.BaseStream);
+                        case TaskRecordingType.AX2012:
+                            return ParseAXTaskRecording(streamReader.BaseStream);
+                    }
+                }
+            }
+            else if(extension == ".axtr")
+            {
+                using(ZipArchive zip = ZipFile.OpenRead(path))
+                {
+                    foreach(ZipArchiveEntry entry in zip.Entries)
+                    {
+                        if (entry.Name == "Recording.xml")
+                        {
+                            string content = new StreamReader(entry.Open()).ReadToEnd();
+                            MemoryStream ms = new MemoryStream();
+                            StreamWriter sw = new StreamWriter(ms);
+                            sw.Write(content);
+                            sw.Flush();
+                            ms.Position = 0;
+                            TaskRecordingType type = DetermineTaskRecordingType(ms);
+                            ms.Position = 0;
+                            tb_taskRecordingType.Text = type.ToString();
+                            switch (type)
+                            {
+                                case TaskRecordingType.D365FO:
+                                    return ParseD365FOTaskRecording(ms);
+                                case TaskRecordingType.AX2012:
+                                    return ParseAXTaskRecording(ms);
+                            }
+                        }
+                    }
+                }
+            }
+            return new List<Models.MenuItem>();
+        }
+
+        private TaskRecordingType DetermineTaskRecordingType(Stream textStream)
+        {
             XmlDocument xDoc = new XmlDocument();
-            xDoc.Load(path);
+            xDoc.Load(textStream);
             string ns = "http://schemas.datacontract.org/2004/07/Microsoft.Dynamics.Client.ServerForm.TaskRecording";
             if (xDoc.GetElementsByTagName("Recording", ns).Count > 0)
             {
-                tb_taskRecordingType.Text = "D365FO";
-                return ParseD365FOTaskRecording(path);
+                return TaskRecordingType.D365FO;
             }
             else
             {
-                tb_taskRecordingType.Text = "AX 2012";
-                return ParseAXTaskRecording(path);
+                return TaskRecordingType.AX2012;
             }
         }
 
-        private List<Models.MenuItem> ParseD365FOTaskRecording(string path)
+        private List<Models.MenuItem> ParseD365FOTaskRecording(Stream textStream)
         {
             List<Models.MenuItem> menuItemList = new List<Models.MenuItem>();
             try
             {
                 string ns = "http://schemas.microsoft.com/2003/10/Serialization/Arrays";
                 XmlDocument xmlDoc = new XmlDocument();
-                xmlDoc.Load(path);
+                xmlDoc.Load(textStream);
                 XmlNodeList values = xmlDoc.GetElementsByTagName("Value", ns);
                 foreach (XmlNode value in values)
                 {
@@ -65,7 +114,8 @@ namespace TaskRecorderParser
 
                 XNamespace xmlSchemaNs = "http://www.w3.org/2001/XMLSchema-instance";
                 XNamespace msftTRns = "http://schemas.datacontract.org/2004/07/Microsoft.Dynamics.Client.ServerForm.TaskRecording";
-                XDocument xDoc = XDocument.Load(path);
+                textStream.Position = 0;
+                XDocument xDoc = XDocument.Load(textStream);
                 var menuItemUserActions = xDoc.Descendants(msftTRns + "Node").Where(n => n.Attribute(xmlSchemaNs + "type").Value == "MenuItemUserAction");
                 foreach (XElement menuItemUserAction in menuItemUserActions)
                 {
@@ -92,12 +142,12 @@ namespace TaskRecorderParser
             return menuItemList.GroupBy(mi => new { mi.Name, mi.Label, mi.Type, mi.FormName }).Select(x => x.First()).ToList();
         }
 
-        private List<Models.MenuItem> ParseAXTaskRecording(string path)
+        private List<Models.MenuItem> ParseAXTaskRecording(Stream textStream)
         {
             List<Models.MenuItem> menuItemList = new List<Models.MenuItem>();
             try
             {
-                XDocument xDoc = XDocument.Load(path);
+                XDocument xDoc = XDocument.Load(textStream);
                 var formActivateEvents = xDoc.Descendants("event").Where(n => n.Attribute("name").Value == "FormActivate");
                 foreach (var formActivateEvent in formActivateEvents)
                 {
@@ -156,7 +206,7 @@ namespace TaskRecorderParser
 
         private void btnBrowse_Click(object sender, EventArgs e)
         {
-            fileDialog.Filter = "Task Recorder Files|*.xml";
+            fileDialog.Filter = "Task Recorder Files|*.xml;*.axtr";
             DialogResult result = fileDialog.ShowDialog();
 
             if (result == DialogResult.OK)
